@@ -6,6 +6,7 @@ import {
   CircleDot,
   Clock3,
   Crown,
+  Flag,
   Grid3X3,
   ListOrdered,
   LoaderCircle,
@@ -25,6 +26,7 @@ import { resolveAIChoice } from './ai/move'
 import { buildMovePrompt, AI_SYSTEM_PROMPT } from './ai/prompt'
 import { isAIConfigured, type AIConfig } from './ai/types'
 import { GameBoard } from './components/GameBoard'
+import { ResignModal } from './components/ResignModal'
 import { SettingsModal } from './components/SettingsModal'
 import { loadSettings, saveSettings, type AppSettings, type MatchMode } from './config'
 import {
@@ -32,6 +34,7 @@ import {
   createGame,
   GAME_META,
   getLegalMoves,
+  resignGame,
   sameCoord,
   type Coord,
   type GameKind,
@@ -143,7 +146,10 @@ export default function App() {
   const [promotion, setPromotion] = useState<PromotionChoice>()
   const [recordView, setRecordView] = useState<RecordView>('moves')
   const [liveThinking, setLiveThinking] = useState<LiveThinking>()
+  const [resignOpen, setResignOpen] = useState(false)
+  const [resigningSeat, setResigningSeat] = useState<Seat>(settings.humanSeat)
   const abortRef = useRef<AbortController | undefined>(undefined)
+  const resumeAIRef = useRef(false)
   const logEndRef = useRef<HTMLDivElement>(null)
   const current = timeline[timeline.length - 1]!
   const currentRef = useRef(current)
@@ -158,7 +164,7 @@ export default function App() {
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ block: 'nearest' })
-  }, [current.records.length, liveThinking?.text, recordView])
+  }, [current.records.length, current.state.result?.label, liveThinking?.text, recordView])
 
   const legalMoves = useMemo(() => getLegalMoves(current.state), [current.state])
   const currentController = controllerFor(current.state.turn, settings)
@@ -187,6 +193,8 @@ export default function App() {
     setTimeline([{ state: createGame(game, goSize), records: [] }])
     setSelected(undefined)
     setPromotion(undefined)
+    setResignOpen(false)
+    resumeAIRef.current = false
     setError('')
     setAiPaused(mode === 'ai-ai')
   }, [stopRequest])
@@ -342,22 +350,30 @@ export default function App() {
   }, [commitMove, settings])
 
   useEffect(() => {
-    if (settingsOpen || phase !== 'idle' || current.state.result) return
+    if (settingsOpen || resignOpen || phase !== 'idle' || current.state.result) return
     const actor = controllerFor(current.state.turn, settings)
     if (actor.kind !== 'ai' || (settings.mode === 'ai-ai' && aiPaused)) return
     const delay = settings.mode === 'ai-ai' ? settings.aiDelay : 420
     const timer = window.setTimeout(() => void runAITurn(current), delay)
     return () => window.clearTimeout(timer)
-  }, [aiPaused, current, phase, runAITurn, settings, settingsOpen])
+  }, [aiPaused, current, phase, resignOpen, runAITurn, settings, settingsOpen])
 
   const undo = () => {
     if (timeline.length <= 1) return
     stopRequest()
     setTimeline((previous) => {
-      const records = previous[previous.length - 1]!.records
+      const latest = previous[previous.length - 1]!
+      const preceding = previous[previous.length - 2]
+      const records = latest.records
+      const terminationOnly = Boolean(
+        preceding
+        && latest.state.result
+        && !preceding.state.result
+        && latest.records.length === preceding.records.length,
+      )
       const last = records[records.length - 1]
       let removeCount = 1
-      if (settings.mode === 'human-ai' && last?.controller !== 'human' && records[records.length - 2]?.controller === 'human') {
+      if (!terminationOnly && settings.mode === 'human-ai' && last?.controller !== 'human' && records[records.length - 2]?.controller === 'human') {
         removeCount = 2
       }
       return previous.slice(0, Math.max(1, previous.length - removeCount))
@@ -368,7 +384,18 @@ export default function App() {
     setAiPaused(settings.mode === 'ai-ai')
   }
 
-  const canUndo = timeline.length > 1 && (settings.mode === 'ai-ai' || current.records.some((record) => record.controller === 'human'))
+  const precedingSnapshot = timeline[timeline.length - 2]
+  const canUndoTermination = Boolean(
+    precedingSnapshot
+    && current.state.result
+    && !precedingSnapshot.state.result
+    && current.records.length === precedingSnapshot.records.length,
+  )
+  const canUndo = timeline.length > 1 && (
+    canUndoTermination
+    || settings.mode === 'ai-ai'
+    || current.records.some((record) => record.controller === 'human')
+  )
 
   const toggleAIPlay = () => {
     if (!aiPaused) {
@@ -403,6 +430,42 @@ export default function App() {
     setSettings((previous) => ({ ...previous, aiA, aiB }))
     setError('')
     setPhase('idle')
+  }
+
+  const openResign = () => {
+    if (current.state.result) return
+    resumeAIRef.current = settings.mode === 'ai-ai' && !aiPaused
+    setResigningSeat(settings.mode === 'human-ai' ? settings.humanSeat : current.state.turn)
+    stopRequest()
+    if (settings.mode === 'ai-ai') setAiPaused(true)
+    setResignOpen(true)
+  }
+
+  const closeResign = () => {
+    setResignOpen(false)
+    const shouldResume = resumeAIRef.current && !currentRef.current.state.result
+    resumeAIRef.current = false
+    if (shouldResume) setAiPaused(false)
+  }
+
+  const confirmResign = () => {
+    resumeAIRef.current = false
+    setResignOpen(false)
+    stopRequest()
+    setTimeline((previous) => {
+      const latest = previous[previous.length - 1]!
+      if (latest.state.result) return previous
+      return [...previous, {
+        state: resignGame(latest.state, resigningSeat),
+        records: latest.records,
+      }]
+    })
+    setSelected(undefined)
+    setPromotion(undefined)
+    setLiveThinking(undefined)
+    setRecordView('moves')
+    setError('')
+    setAiPaused(true)
   }
 
   const turnSide = current.state.turn === 'first' ? meta.first : meta.second
@@ -492,13 +555,13 @@ export default function App() {
 
           <div className="rail-spacer" />
 
-          {settings.mode === 'ai-ai' ? (
-            <button type="button" className={`primary-button match-control ${!aiPaused ? 'is-running' : ''}`} onClick={toggleAIPlay} disabled={Boolean(current.state.result)}>
-              {!aiPaused ? <><Pause size={18} />暂停对弈</> : <><Play size={18} />开始对弈</>}
-            </button>
-          ) : current.state.result ? (
+          {current.state.result ? (
             <button type="button" className="primary-button match-control" onClick={() => resetMatch(settings.game, settings.mode, settings.goSize)}>
               <RotateCcw size={18} />再来一局
+            </button>
+          ) : settings.mode === 'ai-ai' ? (
+            <button type="button" className={`primary-button match-control ${!aiPaused ? 'is-running' : ''}`} onClick={toggleAIPlay} disabled={Boolean(current.state.result)}>
+              {!aiPaused ? <><Pause size={18} />暂停对弈</> : <><Play size={18} />开始对弈</>}
             </button>
           ) : phase === 'error' ? (
             <button type="button" className="primary-button match-control" onClick={retry}>
@@ -521,6 +584,7 @@ export default function App() {
             </div>
             <div className="match-tools">
               <button type="button" className="icon-button" onClick={undo} disabled={!canUndo} title="悔棋"><Undo2 size={18} /></button>
+              {!current.state.result && <button type="button" className="icon-button resign-trigger" onClick={openResign} title="认输" aria-label="认输"><Flag size={18} /></button>}
               <button type="button" className="icon-button" onClick={() => resetMatch(settings.game, settings.mode, settings.goSize)} title="重新开始"><RotateCcw size={18} /></button>
             </div>
           </header>
@@ -610,7 +674,7 @@ export default function App() {
           </div>
           {recordView === 'moves' ? (
             <div className="move-list" id="move-record-panel" role="tabpanel">
-              {!current.records.length && <div className="empty-record"><Swords size={24} /><span>等待第一手</span></div>}
+              {!current.records.length && !current.state.result && <div className="empty-record"><Swords size={24} /><span>等待第一手</span></div>}
               {current.records.map((record) => (
                 <article className="move-entry" key={record.ply}>
                   <span className="move-number">{record.ply}</span>
@@ -625,6 +689,12 @@ export default function App() {
                   </div>
                 </article>
               ))}
+              {current.state.result && (
+                <article className="result-entry" aria-label="对局结果">
+                  <Flag size={16} />
+                  <span><strong>本局结束</strong><small>{current.state.result.label}</small></span>
+                </article>
+              )}
               <div ref={logEndRef} />
             </div>
           ) : (
@@ -672,6 +742,16 @@ export default function App() {
         </aside>
       </main>
 
+      <ResignModal
+        open={resignOpen}
+        game={settings.game}
+        mode={settings.mode}
+        humanSeat={settings.humanSeat}
+        resigningSeat={resigningSeat}
+        onSelectSeat={setResigningSeat}
+        onClose={closeResign}
+        onConfirm={confirmResign}
+      />
       <SettingsModal
         open={settingsOpen}
         aiA={settings.aiA}

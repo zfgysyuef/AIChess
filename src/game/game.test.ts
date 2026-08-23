@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyGameMove, createGame, getLegalMoves, type GameState, type GoState } from '.'
+import { applyGameMove, createGame, getLegalMoves, resignGame, type GameKind, type GameState, type GoState } from '.'
 
 describe('unified game engines', () => {
   it('detects a five-in-a-row win', () => {
@@ -51,5 +51,25 @@ describe('unified game engines', () => {
     expect((state as GoState).previousBoard).toBeUndefined()
     state = applyGameMove(state, 'PASS').state
     expect(state.result).toMatchObject({ winner: 'second', draw: false })
+  })
+
+  it.each([
+    ['gomoku', '黑方认输，白方获胜'],
+    ['xiangqi', '红方认输，黑方获胜'],
+    ['go', '黑方认输，白方获胜'],
+    ['chess', '白方认输，黑方获胜'],
+  ] as const)('ends %s immediately when the first seat resigns', (kind: GameKind, label: string) => {
+    const state = createGame(kind)
+    const resigned = resignGame(state, 'first')
+
+    expect(state.result).toBeUndefined()
+    expect(resigned.result).toEqual({ winner: 'second', draw: false, label })
+    expect(getLegalMoves(resigned)).toHaveLength(0)
+    expect(() => resignGame(resigned, 'second')).toThrow('棋局已经结束')
+  })
+
+  it('awards the game to the first seat when the second seat resigns', () => {
+    const resigned = resignGame(createGame('xiangqi'), 'second')
+    expect(resigned.result).toEqual({ winner: 'first', draw: false, label: '黑方认输，红方获胜' })
   })
 })

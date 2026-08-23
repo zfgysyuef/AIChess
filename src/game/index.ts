@@ -2,7 +2,7 @@ import { applyChessMove, createChessState, getChessMoves } from './chess'
 import { BOARD_FILES } from './coordinates'
 import { applyGoMove, createGoState, getGoMoves } from './go'
 import { applyGomokuMove, createGomokuState, getGomokuMoves } from './gomoku'
-import type { AppliedMove, GameKind, GameMeta, GameMove, GameState, GoSign } from './types'
+import type { AppliedMove, GameKind, GameMeta, GameMove, GameState, GoSign, Seat } from './types'
 import { applyXiangqiMove, createXiangqiState, getXiangqiMoves } from './xiangqi'
 
 export * from './types'
@@ -72,6 +72,24 @@ export function applyGameMove(state: GameState, moveId: string): AppliedMove {
     case 'go': return { state: applyGoMove(state, move), move }
     case 'chess': return { state: applyChessMove(state, move), move }
     case 'xiangqi': return { state: applyXiangqiMove(state, move), move }
+  }
+}
+
+export function resignGame(state: GameState, resigningSeat: Seat): GameState {
+  if (state.result) throw new Error('棋局已经结束')
+
+  const winner: Seat = resigningSeat === 'first' ? 'second' : 'first'
+  const meta = GAME_META[state.kind]
+  const resigningSide = resigningSeat === 'first' ? meta.first : meta.second
+  const winningSide = winner === 'first' ? meta.first : meta.second
+
+  return {
+    ...state,
+    result: {
+      winner,
+      draw: false,
+      label: `${resigningSide}认输，${winningSide}获胜`,
+    },
   }
 }
 

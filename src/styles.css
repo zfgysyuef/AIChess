@@ -540,6 +540,16 @@ button:disabled {
   border-color: #bfc9c4;
 }
 
+.icon-button.resign-trigger {
+  color: #9d3d2b;
+}
+
+.icon-button.resign-trigger:hover:not(:disabled) {
+  color: #832f22;
+  border-color: #d7a79d;
+  background: #fff7f5;
+}
+
 .icon-button:disabled {
   opacity: 0.38;
 }
@@ -1210,6 +1220,42 @@ button:disabled {
   background: #f5f7f4;
 }
 
+.result-entry {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid #dfc1ba;
+  border-radius: 6px;
+  color: #8d3829;
+  background: #fff7f5;
+}
+
+.result-entry > svg {
+  flex: 0 0 auto;
+}
+
+.result-entry > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.result-entry strong {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.result-entry small {
+  color: #84564d;
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .move-number {
   color: #959e9a;
   font: 10px ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -1418,6 +1464,10 @@ button:disabled {
   box-shadow: 0 20px 60px rgba(18, 26, 22, 0.3);
 }
 
+.resign-modal {
+  width: min(100%, 430px);
+}
+
 .modal-header {
   min-height: 72px;
   display: flex;
@@ -1466,6 +1516,81 @@ button:disabled {
 
 .modal-body {
   padding: 18px;
+}
+
+.resign-body {
+  display: grid;
+  gap: 18px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.resign-seat-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.resign-seat-field legend {
+  margin-bottom: 8px;
+  color: #54615c;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.resign-seat-control {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.resign-seat-control button {
+  min-height: 50px;
+  gap: 8px;
+}
+
+.resign-seat-control button > span:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.resign-seat-control strong {
+  font-size: 11px;
+}
+
+.resign-seat-control small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.resign-summary {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.resign-symbol {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #9d3d2b;
+  background: #f7e4df;
+}
+
+.resign-summary p {
+  margin: 0;
+  color: #5c6762;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.resign-summary strong {
+  color: var(--ink);
 }
 
 .settings-form {
@@ -1565,6 +1690,20 @@ button:disabled {
 .modal-actions {
   display: flex;
   gap: 8px;
+}
+
+.resign-footer {
+  justify-content: flex-end;
+}
+
+.primary-button.danger-button {
+  border-color: #8d3829;
+  background: #9d3d2b;
+  box-shadow: 0 3px 8px rgba(141, 56, 41, 0.16);
+}
+
+.primary-button.danger-button:hover:not(:disabled) {
+  background: #832f22;
 }
 
 .text-button {

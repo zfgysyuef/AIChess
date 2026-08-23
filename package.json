@@ -1,0 +1,33 @@
+{
+  "name": "qijing-ai-board-arena",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "qa:visual": "node scripts/visual-check.mjs",
+    "qa:real": "node scripts/real-ai-check.mjs"
+  },
+  "dependencies": {
+    "@algorithm.ts/gomoku": "^4.0.5",
+    "@sabaki/go-board": "1.4.3",
+    "chess.js": "1.4.0",
+    "elephantops": "^0.1.1",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "playwright-core": "^1.62.1",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest"
+  }
+}

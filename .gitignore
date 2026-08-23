@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.npm-cache/
+outputs/
+work/
+.env
+.env.*
+!.env.example
+*.local

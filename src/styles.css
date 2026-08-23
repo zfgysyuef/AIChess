@@ -426,6 +426,7 @@ button:disabled {
 }
 
 .match-header,
+.win-rate-panel,
 .board-status-bar,
 .board-footer,
 .error-banner {
@@ -521,6 +522,77 @@ button:disabled {
 .match-tools {
   display: flex;
   gap: 6px;
+}
+
+.win-rate-panel {
+  min-height: 40px;
+  padding: 0 2px 7px;
+}
+
+.win-rate-labels {
+  min-height: 25px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.win-rate-labels em {
+  color: #7c8782;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.win-rate-side {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.win-rate-side.second {
+  justify-content: flex-end;
+}
+
+.win-rate-side strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.win-rate-side.first strong {
+  color: var(--jade-dark);
+}
+
+.win-rate-side.second strong {
+  color: #9d3d2b;
+}
+
+.win-rate-track {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(38, 48, 43, 0.1);
+  border-radius: 3px;
+  background: var(--coral);
+}
+
+.win-rate-first {
+  display: block;
+  height: 100%;
+  background: var(--jade);
+  transition: width 240ms ease;
+}
+
+.win-rate-panel.exact .win-rate-labels em {
+  color: #725a25;
+}
+
+.win-rate-panel.exact .win-rate-first {
+  transition: none;
 }
 
 .icon-button {

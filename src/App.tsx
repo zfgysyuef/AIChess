@@ -28,10 +28,12 @@ import { isAIConfigured, type AIConfig } from './ai/types'
 import { GameBoard } from './components/GameBoard'
 import { ResignModal } from './components/ResignModal'
 import { SettingsModal } from './components/SettingsModal'
+import { WinRateBar } from './components/WinRateBar'
 import { loadSettings, saveSettings, type AppSettings, type MatchMode } from './config'
 import {
   applyGameMove,
   createGame,
+  estimateWinRate,
   GAME_META,
   getLegalMoves,
   resignGame,
@@ -167,6 +169,7 @@ export default function App() {
   }, [current.records.length, current.state.result?.label, liveThinking?.text, recordView])
 
   const legalMoves = useMemo(() => getLegalMoves(current.state), [current.state])
+  const winRate = useMemo(() => estimateWinRate(current.state), [current.state])
   const currentController = controllerFor(current.state.turn, settings)
   const meta = GAME_META[current.state.kind]
   const thinking = phase === 'thinking'
@@ -588,6 +591,8 @@ export default function App() {
               <button type="button" className="icon-button" onClick={() => resetMatch(settings.game, settings.mode, settings.goSize)} title="重新开始"><RotateCcw size={18} /></button>
             </div>
           </header>
+
+          <WinRateBar meta={meta} estimate={winRate} />
 
           <div className={`board-status-bar ${current.state.result ? 'finished' : ''}`}>
             <span className="status-indicator" />

@@ -15,6 +15,11 @@ function rememberedThinkingMoves(prompt) {
   return [...section.matchAll(/选择列表中的 ([A-Za-z]+\d+)/g)].map((match) => match[1])
 }
 
+async function displayedWinRate(page) {
+  const values = await page.locator('.win-rate-side strong').allTextContents()
+  return values.map((value) => Number.parseInt(value, 10))
+}
+
 const browser = await chromium.launch({ executablePath: EDGE, headless: true })
 const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, deviceScaleFactor: 1 })
 const errors = []
@@ -70,9 +75,16 @@ const initialMetrics = await page.evaluate(() => ({
     const rect = document.querySelector('.grid-board')?.getBoundingClientRect()
     return rect ? { width: rect.width, height: rect.height } : null
   })(),
+  winRate: (() => {
+    const rect = document.querySelector('.win-rate-panel')?.getBoundingClientRect()
+    return rect ? { width: rect.width, height: rect.height } : null
+  })(),
 }))
 if (initialMetrics.scrollWidth > initialMetrics.viewport + 1) errors.push('desktop horizontal overflow')
 if (!initialMetrics.board || initialMetrics.board.width < 480 || initialMetrics.board.height < 480) errors.push('desktop board is undersized or missing')
+const initialWinRate = await displayedWinRate(page)
+if (initialWinRate.length !== 2 || initialWinRate[0] + initialWinRate[1] !== 100) errors.push(`invalid initial win rate: ${initialWinRate}`)
+if (!initialMetrics.winRate || initialMetrics.winRate.width !== initialMetrics.board?.width) errors.push('desktop win rate bar does not align with the board')
 await page.screenshot({ path: 'outputs/qijing-desktop.png', fullPage: true })
 
 await page.getByRole('button', { name: '模型设置' }).click()
@@ -153,6 +165,8 @@ for (const [tab, selector, screenshot] of [
     await page.getByRole('gridcell', { name: 'H8' }).click()
   }
   await page.locator('.move-entry').nth(1).waitFor({ timeout: 5000 })
+  const gameWinRate = await displayedWinRate(page)
+  if (gameWinRate.length !== 2 || gameWinRate[0] + gameWinRate[1] !== 100) errors.push(`${tab} displayed an invalid win rate: ${gameWinRate}`)
   await page.screenshot({ path: screenshot, fullPage: true })
 }
 
@@ -167,10 +181,30 @@ const resignationResult = await page.getByLabel('对局结果').textContent()
 if (!resignationResult?.includes('黑方认输，白方获胜')) errors.push(`unexpected resignation result: ${resignationResult}`)
 if (!await page.getByRole('button', { name: '再来一局' }).isVisible()) errors.push('new match action was not shown after resignation')
 if (await page.getByRole('button', { name: '认输' }).count()) errors.push('resign action remained visible after the match ended')
+const resignedWinRate = await displayedWinRate(page)
+if (resignedWinRate.join(',') !== '0,100') errors.push(`resignation did not show an exact 0/100 win rate: ${resignedWinRate}`)
 await page.screenshot({ path: 'outputs/qijing-resigned.png', fullPage: true })
 await page.getByTitle('悔棋').click()
 if (await page.getByLabel('对局结果').count()) errors.push('undo did not retract the resignation result')
 if (!await page.getByRole('button', { name: '认输' }).isVisible()) errors.push('resign action did not return after undo')
+const restoredWinRate = await displayedWinRate(page)
+if (restoredWinRate.some((value) => value === 0 || value === 100)) errors.push(`undo did not restore an estimated win rate: ${restoredWinRate}`)
+
+await page.setViewportSize({ width: 1440, height: 900 })
+await page.reload({ waitUntil: 'networkidle' })
+const compactDesktopMetrics = await page.evaluate(() => {
+  const stage = document.querySelector('.board-stage')?.getBoundingClientRect()
+  const board = document.querySelector('.grid-board')?.getBoundingClientRect()
+  return {
+    viewport: window.innerWidth,
+    scrollWidth: document.documentElement.scrollWidth,
+    boardWidth: board?.width || 0,
+    boardClipped: Boolean(stage && board && board.bottom > stage.bottom + 1),
+  }
+})
+if (compactDesktopMetrics.scrollWidth > compactDesktopMetrics.viewport + 1) errors.push('compact desktop horizontal overflow')
+if (compactDesktopMetrics.boardWidth < 600 || compactDesktopMetrics.boardClipped) errors.push(`compact desktop board is clipped or undersized: ${JSON.stringify(compactDesktopMetrics)}`)
+await page.screenshot({ path: 'outputs/qijing-compact-desktop.png', fullPage: true })
 
 await page.setViewportSize({ width: 390, height: 844 })
 await page.reload({ waitUntil: 'networkidle' })
@@ -181,12 +215,17 @@ const mobileMetrics = await page.evaluate(() => ({
     const rect = document.querySelector('.grid-board')?.getBoundingClientRect()
     return rect ? { width: rect.width, height: rect.height } : null
   })(),
+  winRate: (() => {
+    const rect = document.querySelector('.win-rate-panel')?.getBoundingClientRect()
+    return rect ? { width: rect.width, height: rect.height } : null
+  })(),
 }))
 if (mobileMetrics.scrollWidth > mobileMetrics.viewport + 1) errors.push('mobile horizontal overflow')
 if (!mobileMetrics.board || mobileMetrics.board.width < 340) errors.push('mobile board is undersized or missing')
+if (!mobileMetrics.winRate || mobileMetrics.winRate.width > mobileMetrics.viewport) errors.push('mobile win rate bar overflows the viewport')
 await page.screenshot({ path: 'outputs/qijing-mobile.png', fullPage: true })
 
 await browser.close()
 
-console.log(JSON.stringify({ initialMetrics, mobileMetrics, apiCalls, errors }, null, 2))
+console.log(JSON.stringify({ initialMetrics, compactDesktopMetrics, mobileMetrics, apiCalls, errors }, null, 2))
 if (errors.length) process.exitCode = 1

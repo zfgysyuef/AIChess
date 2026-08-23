@@ -7,6 +7,7 @@ import { applyXiangqiMove, createXiangqiState, getXiangqiMoves } from './xiangqi
 
 export * from './types'
 export * from './coordinates'
+export * from './evaluation'
 
 export const GAME_META: Record<GameKind, GameMeta> = {
   gomoku: {

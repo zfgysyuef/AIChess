@@ -36,4 +36,14 @@ describe('app settings', () => {
     expect(JSON.parse(readSaved() ?? '{}').settingsVersion).toBe(2)
     expect(loadSettings().goSize).toBe(9)
   })
+
+  it('adds a blank reasoning effort to legacy profiles and preserves configured values', () => {
+    mockStorage({
+      aiA: { model: 'legacy-model' },
+      aiB: { model: 'reasoning-model', reasoningEffort: 'high' },
+    })
+    const settings = loadSettings()
+    expect(settings.aiA.reasoningEffort).toBe('')
+    expect(settings.aiB.reasoningEffort).toBe('high')
+  })
 })

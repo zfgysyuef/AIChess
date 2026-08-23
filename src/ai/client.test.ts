@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildEndpoint, extractProviderText, extractProviderThinking, parseAIChoice, requestAIChoice } from './client'
+import { buildAIRequestBody, buildEndpoint, extractProviderText, extractProviderThinking, parseAIChoice, requestAIChoice } from './client'
 import type { AIConfig } from './types'
 
 function streamResponse(chunks: string[]): Response {
@@ -25,6 +25,7 @@ const CHAT_CONFIG: AIConfig = {
   apiKey: 'test-key',
   model: 'test-model',
   apiStyle: 'chat',
+  reasoningEffort: '',
 }
 
 afterEach(() => {
@@ -36,6 +37,18 @@ describe('AI API adapters', () => {
     expect(buildEndpoint('https://example.com/v1/', 'responses')).toBe('https://example.com/v1/responses')
     expect(buildEndpoint('https://example.com/v1/chat/completions', 'responses')).toBe('https://example.com/v1/responses')
     expect(buildEndpoint('https://example.com/v1/responses', 'chat')).toBe('https://example.com/v1/chat/completions')
+  })
+
+  it('maps reasoning effort to each API request shape and omits blank values', () => {
+    const chatBody = buildAIRequestBody({ ...CHAT_CONFIG, reasoningEffort: ' high ' }, 'system', 'prompt')
+    const responsesBody = buildAIRequestBody({ ...CHAT_CONFIG, apiStyle: 'responses', reasoningEffort: 'xhigh' }, 'system', 'prompt')
+    const defaultBody = buildAIRequestBody(CHAT_CONFIG, 'system', 'prompt')
+    const defaultResponsesBody = buildAIRequestBody({ ...CHAT_CONFIG, apiStyle: 'responses' }, 'system', 'prompt')
+
+    expect(chatBody.reasoning_effort).toBe('high')
+    expect(responsesBody.reasoning).toEqual({ effort: 'xhigh' })
+    expect(defaultBody).not.toHaveProperty('reasoning_effort')
+    expect(defaultResponsesBody).not.toHaveProperty('reasoning')
   })
 
   it('extracts chat completions text', () => {

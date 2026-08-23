@@ -6,6 +6,7 @@
 
 - 人对 AI、AI 对 AI 两种模式
 - 双 AI 独立配置 Base URL、API Key、模型与 API 类型
+- AI A 与 AI B 可独立填写推理深度，留空时使用模型默认值
 - 支持 `Responses API` 和 `Chat Completions`
 - 本地规则引擎校验每一步，模型无法绕过合法性检查
 - AI 非法着法自动纠正重试
@@ -55,6 +56,15 @@ https://api.openai.com/v1
 ```
 
 也可以直接填写完整端点；切换 API 类型时，已知的端点后缀会自动替换。
+
+“AI 推理深度”是可选的自由输入项，常见值包括 `none`、`minimal`、`low`、`medium`、`high`、`xhigh` 和 `max`，实际支持范围取决于模型及兼容服务。应用会去除首尾空白，然后按 API 类型发送：
+
+```text
+Responses API:       reasoning: { effort: "high" }
+Chat Completions:    reasoning_effort: "high"
+```
+
+留空时请求体不会包含推理深度参数，不改变模型的默认行为。字段结构参考 [OpenAI 模型指南](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.2)。
 
 模型必须返回以下 JSON；额外 Markdown 包裹也能解析，但不推荐：
 

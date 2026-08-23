@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy, Eye, EyeOff, KeyRound, X } from 'lucide-react'
+import { BrainCircuit, Check, Copy, Eye, EyeOff, KeyRound, X } from 'lucide-react'
 import type { AIConfig } from '../ai/types'
+
+const REASONING_EFFORT_OPTIONS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
 
 interface SettingsModalProps {
   open: boolean
@@ -56,6 +58,26 @@ function ProfileForm({ profile, revealKey, onReveal, onChange }: ProfileFormProp
           placeholder="输入模型名称"
           spellCheck={false}
         />
+      </label>
+
+      <label className="field-group">
+        <span>AI 推理深度</span>
+        <span className="input-with-action reasoning-effort-input">
+          <BrainCircuit size={16} aria-hidden="true" />
+          <input
+            value={profile.reasoningEffort}
+            onChange={(event) => onChange({ ...profile, reasoningEffort: event.target.value })}
+            placeholder="留空使用模型默认值"
+            list="reasoning-effort-options"
+            maxLength={32}
+            autoComplete="off"
+            spellCheck={false}
+            title="填写兼容服务支持的推理强度；留空时不发送该参数"
+          />
+        </span>
+        <datalist id="reasoning-effort-options">
+          {REASONING_EFFORT_OPTIONS.map((effort) => <option value={effort} key={effort} />)}
+        </datalist>
       </label>
 
       <fieldset className="field-group">

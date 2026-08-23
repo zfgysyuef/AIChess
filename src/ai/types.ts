@@ -6,6 +6,7 @@ export interface AIConfig {
   apiKey: string
   model: string
   apiStyle: ApiStyle
+  reasoningEffort: string
 }
 
 export interface AIChoice {
@@ -21,6 +22,7 @@ export const DEFAULT_AI_A: AIConfig = {
   apiKey: '',
   model: '',
   apiStyle: 'responses',
+  reasoningEffort: '',
 }
 
 export const DEFAULT_AI_B: AIConfig = {

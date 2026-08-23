@@ -7,13 +7,15 @@ export function buildEndpoint(baseUrl: string, apiStyle: AIConfig['apiStyle']): 
   return apiStyle === 'responses' ? `${root}/responses` : `${root}/chat/completions`
 }
 
-function requestBody(config: AIConfig, systemPrompt: string, prompt: string): unknown {
+export function buildAIRequestBody(config: AIConfig, systemPrompt: string, prompt: string): Record<string, unknown> {
+  const reasoningEffort = typeof config.reasoningEffort === 'string' ? config.reasoningEffort.trim() : ''
   if (config.apiStyle === 'responses') {
     return {
       model: config.model.trim(),
       instructions: systemPrompt,
       input: prompt,
       stream: true,
+      ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
     }
   }
   return {
@@ -23,6 +25,7 @@ function requestBody(config: AIConfig, systemPrompt: string, prompt: string): un
       { role: 'user', content: prompt },
     ],
     stream: true,
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
   }
 }
 
@@ -441,7 +444,7 @@ export async function requestAIChoice(
     body: JSON.stringify({
       url: buildEndpoint(config.baseUrl, config.apiStyle),
       apiKey: config.apiKey,
-      body: requestBody(config, systemPrompt, prompt),
+      body: buildAIRequestBody(config, systemPrompt, prompt),
     }),
   })
 

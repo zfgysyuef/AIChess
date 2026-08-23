@@ -45,6 +45,7 @@ await page.route('**/api/ai', async (route) => {
     move,
     returnedMove,
     stream: payload.body.stream,
+    reasoningEffort: responses ? payload.body.reasoning?.effort : payload.body.reasoning_effort,
     rememberedMoves: rememberedThinkingMoves(prompt),
   })
   const reasoning = `检查当前合法着法，并选择列表中的 ${move}。`
@@ -91,10 +92,12 @@ await page.getByRole('button', { name: '模型设置' }).click()
 const dialog = page.getByRole('dialog', { name: 'AI 模型配置' })
 await dialog.getByLabel('API Key').fill('key-a')
 await dialog.getByLabel('模型').fill('mock-chat-model')
+await dialog.getByLabel('AI 推理深度').fill('high')
 await dialog.getByRole('button', { name: 'Chat Completions' }).click()
 await dialog.getByRole('tab', { name: 'AI B' }).click()
 await dialog.getByLabel('API Key').fill('key-b')
 await dialog.getByLabel('模型').fill('mock-responses-model')
+await dialog.getByLabel('AI 推理深度').fill('low')
 await dialog.getByRole('button', { name: 'Responses API' }).click()
 await page.screenshot({ path: 'outputs/qijing-settings.png' })
 await dialog.getByRole('button', { name: '保存配置' }).click()
@@ -121,6 +124,8 @@ if (!await aiResignDialog.getByText(/AI B（白方）/).isVisible()) errors.push
 await aiResignDialog.getByRole('button', { name: '取消' }).click()
 if (!apiCalls.some((call) => call.style === 'chat' && call.key === 'key-a')) errors.push('Chat Completions profile was not used')
 if (!apiCalls.some((call) => call.style === 'responses' && call.key === 'key-b')) errors.push('Responses profile was not used')
+if (apiCalls.some((call) => call.key === 'key-a' && call.reasoningEffort !== 'high')) errors.push('AI A reasoning effort was not sent as reasoning_effort')
+if (apiCalls.some((call) => call.key === 'key-b' && call.reasoningEffort !== 'low')) errors.push('AI B reasoning effort was not sent as reasoning.effort')
 if (apiCalls.some((call) => call.stream !== true)) errors.push('an AI request did not enable streaming')
 const aiMatchCalls = apiCalls.filter((call) => call.scenario === 'ai-ai')
 if (aiMatchCalls[0]?.rememberedMoves.length) errors.push('AI A received thinking history before its first move')
@@ -224,6 +229,15 @@ if (mobileMetrics.scrollWidth > mobileMetrics.viewport + 1) errors.push('mobile 
 if (!mobileMetrics.board || mobileMetrics.board.width < 340) errors.push('mobile board is undersized or missing')
 if (!mobileMetrics.winRate || mobileMetrics.winRate.width > mobileMetrics.viewport) errors.push('mobile win rate bar overflows the viewport')
 await page.screenshot({ path: 'outputs/qijing-mobile.png', fullPage: true })
+
+await page.getByRole('button', { name: '模型设置' }).click()
+const mobileSettings = page.getByRole('dialog', { name: 'AI 模型配置' })
+const mobileReasoningInput = mobileSettings.getByLabel('AI 推理深度')
+await mobileReasoningInput.scrollIntoViewIfNeeded()
+if (await mobileReasoningInput.inputValue() !== 'high') errors.push('reasoning effort did not persist after reload')
+if (!await mobileReasoningInput.isVisible()) errors.push('reasoning effort input is not visible on mobile')
+await page.screenshot({ path: 'outputs/qijing-reasoning-depth-mobile.png', fullPage: true })
+await mobileSettings.getByTitle('关闭').click()
 
 await browser.close()
 

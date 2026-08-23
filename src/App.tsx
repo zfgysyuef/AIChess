@@ -492,7 +492,7 @@ export default function App() {
           })}
         </nav>
 
-        <button type="button" className="settings-trigger" onClick={openModelSettings}>
+        <button type="button" className="settings-trigger" onClick={openModelSettings} aria-label="模型设置">
           <Settings2 size={18} /><span>模型设置</span>
         </button>
       </header>

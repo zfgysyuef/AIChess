@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { requestAIChoice } from './ai/client'
+import { resolveAIChoice } from './ai/move'
 import { buildMovePrompt, AI_SYSTEM_PROMPT } from './ai/prompt'
 import { isAIConfigured, type AIConfig } from './ai/types'
 import { GameBoard } from './components/GameBoard'
@@ -320,7 +321,7 @@ export default function App() {
             setLiveThinking((previous) => previous ? { ...previous, text: thinkingPath } : previous)
           },
         )
-        const match = legal.find((move) => move.id.toUpperCase() === choice.move.toUpperCase())
+        const match = resolveAIChoice(choice.move, legal)
         if (match) {
           if (currentRef.current !== snapshot || controller.signal.aborted) return
           commitMove(snapshot, match.id, actor, choice.reason, choice.thinking, performance.now() - startedAt)

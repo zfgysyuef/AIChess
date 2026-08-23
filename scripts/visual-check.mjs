@@ -3,11 +3,11 @@ import { chromium } from 'playwright-core'
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'
 const BASE_URL = 'http://127.0.0.1:5173/'
 
-function firstLegalMove(prompt) {
-  const marker = '合法着法 ID（必须原样选择其中一个）：'
-  const section = String(prompt).split(marker)[1] || ''
-  const token = section.trim().split(/\s+/)[0] || ''
-  return token.split('[')[0]
+function firstLegalChoice(prompt) {
+  const section = String(prompt).split(/合法着法 ID[^\n]*：\n/)[1] || ''
+  const firstLine = section.trim().split(/\r?\n/)[0] || ''
+  const [id, notation = ''] = firstLine.split('|').map((part) => part.trim())
+  return { id, notation }
 }
 
 function rememberedThinkingMoves(prompt) {
@@ -30,12 +30,15 @@ await page.route('**/api/ai', async (route) => {
   const payload = route.request().postDataJSON()
   const responses = String(payload.url).endsWith('/responses')
   const prompt = responses ? payload.body.input : payload.body.messages.at(-1).content
-  const move = firstLegalMove(prompt)
+  const choice = firstLegalChoice(prompt)
+  const move = choice.id
+  const returnedMove = scenario === 'board-checks' && choice.notation ? `${move}[${choice.notation}]` : move
   apiCalls.push({
     scenario,
     style: responses ? 'responses' : 'chat',
     key: payload.apiKey,
     move,
+    returnedMove,
     stream: payload.body.stream,
     rememberedMoves: rememberedThinkingMoves(prompt),
   })
@@ -44,13 +47,13 @@ await page.route('**/api/ai', async (route) => {
     ? [
         `data: ${JSON.stringify({ type: 'response.reasoning_text.delta', delta: reasoning.slice(0, 8) })}\n\n`,
         `data: ${JSON.stringify({ type: 'response.reasoning_text.delta', delta: reasoning.slice(8) })}\n\n`,
-        `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: JSON.stringify({ move, reason: '选择首个合法着法' }) })}\n\n`,
+        `data: ${JSON.stringify({ type: 'response.output_text.delta', delta: JSON.stringify({ move: returnedMove, reason: '选择首个合法着法' }) })}\n\n`,
         'data: [DONE]\n\n',
       ].join('')
     : [
         `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: reasoning.slice(0, 8) } }] })}\n\n`,
         `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: reasoning.slice(8) } }] })}\n\n`,
-        `data: ${JSON.stringify({ choices: [{ delta: { content: JSON.stringify({ move, reason: '选择首个合法着法' }) } }] })}\n\n`,
+        `data: ${JSON.stringify({ choices: [{ delta: { content: JSON.stringify({ move: returnedMove, reason: '选择首个合法着法' }) } }] })}\n\n`,
         'data: [DONE]\n\n',
       ].join('')
   await new Promise((resolve) => setTimeout(resolve, 500))
@@ -146,6 +149,9 @@ for (const [tab, selector, screenshot] of [
   await page.locator('.move-entry').nth(1).waitFor({ timeout: 5000 })
   await page.screenshot({ path: screenshot, fullPage: true })
 }
+
+const annotatedMoveCalls = apiCalls.filter((call) => call.scenario === 'board-checks' && call.returnedMove.includes('['))
+if (annotatedMoveCalls.length < 2) errors.push('annotated chess move compatibility was not exercised')
 
 await page.setViewportSize({ width: 390, height: 844 })
 await page.reload({ waitUntil: 'networkidle' })

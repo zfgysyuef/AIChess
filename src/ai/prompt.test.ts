@@ -60,6 +60,19 @@ describe('AI move prompt', () => {
     })
 
     expect(prompt).toContain('[本次轨迹已截断]')
-    expect(prompt).toContain('合法着法 ID（必须原样选择其中一个）')
+    expect(prompt).toContain('合法着法 ID（每行若含“|”，move 只能复制左侧 ID）')
+  })
+
+  it('separates chess IDs from SAN notation instead of wrapping them together', () => {
+    const state = createGame('chess')
+    const prompt = buildMovePrompt({
+      state,
+      legalMoves: getLegalMoves(state),
+      recentMoves: [],
+      currentController: 'aiA',
+    })
+
+    expect(prompt).toContain('e2e4 | e4')
+    expect(prompt).not.toContain('e2e4[e4]')
   })
 })
